@@ -1,0 +1,22 @@
+---
+const response = await fetch("http://127.0.0.1:5000/api/news");
+const noticias = await response.json();
+---
+
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Noticias Universitarias</title>
+  </head>
+  <body>
+    <h1>Noticias Universitarias</h1>
+
+    <ul>
+      {noticias.map((noticia) => (
+        <li>
+          <strong>{noticia.titulo}</strong> — {noticia.contenido}
+        </li>
+      ))}
+    </ul>
+  </body>
+</html>
