@@ -70,53 +70,67 @@ class Database:
     def init_tables(self):
         """Inicializar tablas en la base de datos"""
         try:
-            # Crear tabla de usuarios
-            self.execute_query("""
-                CREATE TABLE IF NOT EXISTS usuarios (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    usuario VARCHAR(50) UNIQUE NOT NULL,
-                    password VARCHAR(255) NOT NULL,
-                    nombre VARCHAR(100),
-                    email VARCHAR(100),
-                    rol VARCHAR(20) DEFAULT 'usuario',
-                    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
+            # Verificar si la tabla usuarios_nul existe y tiene la estructura correcta
+            try:
+                self.execute_query("SELECT idUsuario, usuario, contrasena FROM usuarios_nul LIMIT 1")
+                logger.info("Tabla usuarios_nul ya existe")
+            except:
+                # Crear tabla de usuarios_nul solo si no existe
+                self.execute_query("""
+                    CREATE TABLE IF NOT EXISTS usuarios_nul (
+                        idUsuario INT AUTO_INCREMENT PRIMARY KEY,
+                        usuario VARCHAR(50) UNIQUE NOT NULL,
+                        contrasena VARCHAR(255) NOT NULL,
+                        nombre VARCHAR(100),
+                        email VARCHAR(100),
+                        rol VARCHAR(20) DEFAULT 'usuario',
+                        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
             
-            # Crear tabla de noticias
-            self.execute_query("""
-                CREATE TABLE IF NOT EXISTS noticias (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    titulo VARCHAR(255) NOT NULL,
-                    contenido TEXT NOT NULL,
-                    autor VARCHAR(100) NOT NULL,
-                    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    imagen_url VARCHAR(500),
-                    usuario_id INT,
-                    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
-                    INDEX idx_fecha (fecha),
-                    INDEX idx_autor (autor)
-                )
-            """)
+            # Crear tabla de noticias_nul (sin clave foránea para compatibilidad)
+            try:
+                self.execute_query("SELECT id FROM noticias_nul LIMIT 1")
+                logger.info("Tabla noticias_nul ya existe")
+            except:
+                # Crear tabla de noticias_nul sin clave foránea para evitar problemas
+                self.execute_query("""
+                    CREATE TABLE IF NOT EXISTS noticias_nul (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        titulo VARCHAR(255) NOT NULL,
+                        contenido TEXT NOT NULL,
+                        autor VARCHAR(100) NOT NULL,
+                        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        imagen_url VARCHAR(500),
+                        usuario_id INT,
+                        INDEX idx_fecha (fecha),
+                        INDEX idx_autor (autor),
+                        INDEX idx_titulo (titulo)
+                    )
+                """)
+                logger.info("Tabla noticias_nul creada")
             
             # Insertar usuario admin por defecto si no existe
-            existing_admin = self.execute_query(
-                "SELECT id FROM usuarios WHERE usuario = %s",
-                ('admin',),
-                fetch_one=True
-            )
+            try:
+                existing_admin = self.execute_query(
+                    "SELECT idUsuario FROM usuarios_nul WHERE usuario = %s",
+                    ('admin',),
+                    fetch_one=True
+                )
+                
+                if not existing_admin:
+                    # Password: '1234' (en producción usar bcrypt o similar)
+                    self.execute_query("""
+                        INSERT INTO usuarios_nul (usuario, contrasena, nombre, rol)
+                        VALUES (%s, %s, %s, %s)
+                    """, ('admin', '1234', 'Administrador', 'admin'))
+                    logger.info("Usuario admin creado por defecto")
+            except Exception as e:
+                logger.warning(f"No se pudo crear usuario admin: {e}")
             
-            if not existing_admin:
-                # Password: '1234' hasheado (en producción usar bcrypt o similar)
-                self.execute_query("""
-                    INSERT INTO usuarios (usuario, password, nombre, rol)
-                    VALUES (%s, %s, %s, %s)
-                """, ('admin', '1234', 'Administrador', 'admin'))
-                logger.info("✅ Usuario admin creado por defecto")
-            
-            logger.info("✅ Tablas inicializadas correctamente")
+            logger.info("Tablas inicializadas correctamente")
             return True
         except Error as e:
-            logger.error(f"❌ Error al inicializar tablas: {e}")
+            logger.error(f"Error al inicializar tablas: {e}")
             return False
 

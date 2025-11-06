@@ -9,11 +9,11 @@ CREATE DATABASE IF NOT EXISTS noticias_ul CHARACTER SET utf8mb4 COLLATE utf8mb4_
 
 USE noticias_ul;
 
--- Tabla de usuarios
-CREATE TABLE IF NOT EXISTS usuarios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+-- Tabla de usuarios_nul
+CREATE TABLE IF NOT EXISTS usuarios_nul (
+    idUsuario INT AUTO_INCREMENT PRIMARY KEY,
     usuario VARCHAR(50) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
+    contrasena VARCHAR(255) NOT NULL,
     nombre VARCHAR(100),
     email VARCHAR(100),
     rol VARCHAR(20) DEFAULT 'usuario',
@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
     INDEX idx_usuario (usuario)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Tabla de noticias
-CREATE TABLE IF NOT EXISTS noticias (
+-- Tabla de noticias_nul
+CREATE TABLE IF NOT EXISTS noticias_nul (
     id INT AUTO_INCREMENT PRIMARY KEY,
     titulo VARCHAR(255) NOT NULL,
     contenido TEXT NOT NULL,
@@ -30,21 +30,19 @@ CREATE TABLE IF NOT EXISTS noticias (
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     imagen_url VARCHAR(500),
     usuario_id INT,
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
     INDEX idx_fecha (fecha),
     INDEX idx_autor (autor),
     INDEX idx_titulo (titulo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Insertar usuario admin por defecto
--- Password: '1234' (en producción usar hash bcrypt)
-INSERT INTO usuarios (usuario, password, nombre, rol) 
+-- Password: '1234' (en producción usar hash bcrypt o similar)
+INSERT INTO usuarios_nul (usuario, contrasena, nombre, rol) 
 VALUES ('admin', '1234', 'Administrador', 'admin')
 ON DUPLICATE KEY UPDATE usuario=usuario;
 
 -- Datos de ejemplo (opcional)
-INSERT INTO noticias (titulo, contenido, autor, imagen_url) VALUES
+INSERT INTO noticias_nul (titulo, contenido, autor, imagen_url) VALUES
 ('Bienvenido a Noticias Universitarias', 'Este es el sistema de noticias universitarias. Puedes agregar noticias, comentar y más.', 'Sistema', ''),
 ('Cómo usar el sistema', 'Para agregar noticias, debes iniciar sesión con tu cuenta de administrador.', 'Sistema', '')
 ON DUPLICATE KEY UPDATE titulo=titulo;
-

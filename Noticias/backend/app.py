@@ -37,27 +37,40 @@ def login():
         usuario = data.get("usuario")
         password = data.get("password")
         
+        logger.info(f"Intento de login - Usuario: {usuario}")
+        
         if not usuario or not password:
+            logger.warning("Login fallido: Faltan usuario o contraseña")
             return jsonify({"error": "Usuario y contraseña requeridos"}), 400
         
         # Buscar usuario en MySQL
         user = db.execute_query(
-            "SELECT id, usuario, password, nombre, rol FROM usuarios WHERE usuario = %s",
+            "SELECT idUsuario, usuario, contrasena, nombre, rol FROM usuarios_nul WHERE usuario = %s",
             (usuario,),
             fetch_one=True
         )
         
-        if user and user['password'] == password:  # En producción usar bcrypt
+        if not user:
+            logger.warning(f"Login fallido: Usuario '{usuario}' no encontrado")
+            return jsonify({"error": "Credenciales incorrectas"}), 401
+        
+        logger.info(f"Usuario encontrado: {user['usuario']}")
+        
+        if user['contrasena'] == password:  # En producción usar bcrypt
+            logger.info(f"Login exitoso para usuario: {usuario}")
             return jsonify({
                 "mensaje": "Inicio de sesión exitoso",
                 "usuario": user['usuario'],
                 "nombre": user.get('nombre'),
                 "rol": user.get('rol')
             })
-        
-        return jsonify({"error": "Credenciales incorrectas"}), 401
+        else:
+            logger.warning(f"Login fallido: Contraseña incorrecta para usuario '{usuario}'")
+            return jsonify({"error": "Credenciales incorrectas"}), 401
     except Exception as e:
         logger.error(f"Error en login: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({"error": "Error interno del servidor"}), 500
 
 @app.route('/api/news', methods=['GET'])
@@ -65,7 +78,7 @@ def get_news():
     """Obtener todas las noticias desde MySQL"""
     try:
         noticias = db.execute_query(
-            "SELECT id, titulo, contenido, autor, fecha, imagen_url as imagen FROM noticias ORDER BY fecha DESC",
+            "SELECT id, titulo, contenido, autor, fecha, imagen_url as imagen FROM noticias_nul ORDER BY fecha DESC",
             fetch_all=True
         )
         
@@ -108,13 +121,13 @@ def create_news():
         
         # Insertar en MySQL
         noticia_id = db.execute_query(
-            "INSERT INTO noticias (titulo, contenido, autor, imagen_url) VALUES (%s, %s, %s, %s)",
+            "INSERT INTO noticias_nul (titulo, contenido, autor, imagen_url) VALUES (%s, %s, %s, %s)",
             (titulo, contenido, autor, imagen_url)
         )
         
         # Obtener la noticia creada
         nueva_noticia = db.execute_query(
-            "SELECT id, titulo, contenido, autor, fecha, imagen_url as imagen FROM noticias WHERE id = %s",
+            "SELECT id, titulo, contenido, autor, fecha, imagen_url as imagen FROM noticias_nul WHERE id = %s",
             (noticia_id,),
             fetch_one=True
         )
