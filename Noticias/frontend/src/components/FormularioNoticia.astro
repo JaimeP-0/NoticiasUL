@@ -1,0 +1,39 @@
+---
+// Componente: Formulario para agregar nueva noticia
+// Este componente maneja la creación de noticias desde el frontend
+---
+
+<form id="formulario-noticia" class="formulario-noticia">
+	<div class="campo-formulario">
+		<label for="titulo">Título:</label>
+		<input type="text" id="titulo" name="titulo" required />
+	</div>
+	
+	<div class="campo-formulario">
+		<label for="contenido">Contenido:</label>
+		<textarea id="contenido" name="contenido" rows="5" required></textarea>
+	</div>
+	
+	<div class="campo-formulario">
+		<label for="autor">Autor:</label>
+		<input type="text" id="autor" name="autor" required />
+	</div>
+	
+	<div class="campo-formulario">
+		<label for="imagen">URL de Imagen (Firebase Storage):</label>
+		<input 
+			type="text" 
+			id="imagen" 
+			name="imagen" 
+			placeholder="https://firebasestorage.googleapis.com/..."
+		/>
+		<!-- 
+			Nota: En producción, aquí iría la integración con Firebase Storage
+			para subir imágenes directamente. Por ahora se acepta URL simulada.
+			La URL real se obtendría después de subir la imagen a Firebase Storage.
+		-->
+	</div>
+	
+	<button type="submit">Publicar Noticia</button>
+</form>
+
