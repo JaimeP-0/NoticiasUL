@@ -1,0 +1,150 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+	<section class="mb-12 max-w-md mx-auto">
+		<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm">
+			<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Registrarse</h2>
+			
+			<form id="formulario-registro" class="space-y-4">
+				<div>
+					<label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+						Usuario: <span class="text-red-500">*</span>
+					</label>
+					<input 
+						type="text" 
+						id="username" 
+						name="username" 
+						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+						required 
+					/>
+				</div>
+				
+				<div>
+					<label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+						Contraseña: <span class="text-red-500">*</span>
+					</label>
+					<input 
+						type="password" 
+						id="password" 
+						name="password" 
+						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+						required 
+					/>
+				</div>
+
+				<div>
+					<label for="nombre" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+						Nombre completo:
+					</label>
+					<input 
+						type="text" 
+						id="nombre" 
+						name="nombre" 
+						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+					/>
+				</div>
+
+				<div>
+					<label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+						Email:
+					</label>
+					<input 
+						type="email" 
+						id="email" 
+						name="email" 
+						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+					/>
+				</div>
+				
+				<div id="registro-error" class="text-red-600 dark:text-red-400 text-sm hidden"></div>
+				<div id="registro-success" class="text-green-600 dark:text-green-400 text-sm hidden"></div>
+				
+				<button 
+					type="submit"
+					class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+				>
+					Registrarse
+				</button>
+
+				<div class="text-center mt-4">
+					<p class="text-sm text-gray-600 dark:text-gray-400">
+						¿Ya tienes cuenta? 
+						<a href="/login" class="text-blue-600 dark:text-blue-400 hover:underline">
+							Inicia sesión aquí
+						</a>
+					</p>
+				</div>
+			</form>
+		</div>
+	</section>
+</Layout>
+
+<script>
+	const API_BASE_URL = '/api';
+
+	async function registrar(credentials) {
+		try {
+			const response = await fetch(`${API_BASE_URL}/auth/register`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(credentials),
+			});
+			const data = await response.json();
+			return data;
+		} catch (error) {
+			return { success: false, message: error.message || 'Error al registrar usuario' };
+		}
+	}
+
+	async function manejarEnvioRegistro(event) {
+		event.preventDefault();
+		const formulario = event.target;
+		const errorDiv = document.getElementById('registro-error');
+		const successDiv = document.getElementById('registro-success');
+		const username = document.getElementById('username').value.trim();
+		const password = document.getElementById('password').value.trim();
+		const nombre = document.getElementById('nombre').value.trim();
+		const email = document.getElementById('email').value.trim();
+
+		// Ocultar mensajes anteriores
+		errorDiv.classList.add('hidden');
+		successDiv.classList.add('hidden');
+
+		if (!username || !password) {
+			errorDiv.textContent = 'Por favor, completa todos los campos requeridos.';
+			errorDiv.classList.remove('hidden');
+			return;
+		}
+
+		try {
+			const result = await registrar({ username, password, nombre, email });
+			
+			if (result.success) {
+				successDiv.textContent = result.message || 'Usuario registrado exitosamente. Redirigiendo...';
+				successDiv.classList.remove('hidden');
+				formulario.reset();
+				
+				// Redirigir al login después de 2 segundos
+				setTimeout(() => {
+					window.location.href = '/login';
+				}, 2000);
+			} else {
+				errorDiv.textContent = result.message || 'Error al registrar usuario';
+				errorDiv.classList.remove('hidden');
+			}
+		} catch (error) {
+			errorDiv.textContent = 'Error al registrar usuario. Por favor, intenta nuevamente.';
+			errorDiv.classList.remove('hidden');
+		}
+	}
+
+	document.addEventListener('DOMContentLoaded', () => {
+		const formulario = document.getElementById('formulario-registro');
+		if (formulario) {
+			formulario.addEventListener('submit', manejarEnvioRegistro);
+		}
+	});
+</script>
+
