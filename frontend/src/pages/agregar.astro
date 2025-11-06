@@ -1,0 +1,379 @@
+---
+import Layout from '../layouts/Layout.astro';
+import FormularioNoticia from '../components/views/FormularioNoticia.astro';
+---
+
+<Layout>
+	<section class="mb-12">
+		<FormularioNoticia />
+	</section>
+
+	<!-- Modal de mensaje genérico -->
+	<div id="modal-mensaje" class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 z-50 hidden flex items-center justify-center">
+		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 transform transition-all">
+			<div class="p-6">
+				<div class="flex items-center gap-3 mb-4">
+					<div id="modal-icono" class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center">
+						<i id="modal-icono-clase" class="text-2xl"></i>
+					</div>
+					<h3 id="modal-titulo-mensaje" class="text-xl font-bold text-gray-900 dark:text-white">
+					</h3>
+				</div>
+				
+				<p id="modal-contenido-mensaje" class="text-gray-600 dark:text-gray-300 mb-6">
+				</p>
+				
+				<div class="flex gap-3 justify-end">
+					<button
+						id="btn-cerrar-mensaje"
+						class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+					>
+						Aceptar
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</Layout>
+
+<script is:inline>
+	const API_BASE_URL = '/api';
+	const BACKEND_BASE_URL = 'http://127.0.0.1:5000/api';
+
+	// Helper para acceder a localStorage de forma segura
+	function getLocalStorage(key, defaultValue = null) {
+		try {
+			// Verificar múltiples formas de que estamos en el cliente
+			if (typeof window === 'undefined') {
+				return defaultValue;
+			}
+			if (!window.localStorage) {
+				return defaultValue;
+			}
+			const value = window.localStorage.getItem(key);
+			return value !== null ? value : defaultValue;
+		} catch (e) {
+			console.warn('Error accediendo a localStorage:', e);
+			return defaultValue;
+		}
+	}
+
+	// Función para mostrar modal de mensaje
+	function mostrarModalMensaje(titulo, mensaje, tipo = 'info') {
+		const modal = document.getElementById('modal-mensaje');
+		const tituloElement = document.getElementById('modal-titulo-mensaje');
+		const contenidoElement = document.getElementById('modal-contenido-mensaje');
+		const iconoElement = document.getElementById('modal-icono');
+		const iconoClaseElement = document.getElementById('modal-icono-clase');
+		
+		if (!modal || !tituloElement || !contenidoElement) return;
+		
+		// Configurar según el tipo
+		let bgColor, icono, iconoColor;
+		switch(tipo) {
+			case 'error':
+				bgColor = 'bg-red-100 dark:bg-red-900/30';
+				icono = 'bi-exclamation-circle-fill';
+				iconoColor = 'text-red-600 dark:text-red-400';
+				break;
+			case 'success':
+				bgColor = 'bg-green-100 dark:bg-green-900/30';
+				icono = 'bi-check-circle-fill';
+				iconoColor = 'text-green-600 dark:text-green-400';
+				break;
+			case 'warning':
+				bgColor = 'bg-yellow-100 dark:bg-yellow-900/30';
+				icono = 'bi-exclamation-triangle-fill';
+				iconoColor = 'text-yellow-600 dark:text-yellow-400';
+				break;
+			default:
+				bgColor = 'bg-blue-100 dark:bg-blue-900/30';
+				icono = 'bi-info-circle-fill';
+				iconoColor = 'text-blue-600 dark:text-blue-400';
+		}
+		
+		iconoElement.className = `flex-shrink-0 w-12 h-12 ${bgColor} rounded-full flex items-center justify-center`;
+		iconoClaseElement.className = `${icono} ${iconoColor} text-2xl`;
+		tituloElement.textContent = titulo;
+		contenidoElement.textContent = mensaje;
+		
+		modal.classList.remove('hidden');
+	}
+
+	function cerrarModalMensaje() {
+		const modal = document.getElementById('modal-mensaje');
+		if (modal) {
+			modal.classList.add('hidden');
+		}
+	}
+
+	// Validar tipos de archivo permitidos
+	const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+	const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+	function validarArchivo(archivo) {
+		if (!archivo) return { valido: true }; // Imagen opcional
+
+		if (!ALLOWED_TYPES.includes(archivo.type)) {
+			return { 
+				valido: false, 
+				error: 'Tipo de archivo no permitido. Solo se aceptan PNG, JPG, JPEG, GIF y WEBP.' 
+			};
+		}
+
+		if (archivo.size > MAX_FILE_SIZE) {
+			return { 
+				valido: false, 
+				error: 'El archivo es demasiado grande. Máximo permitido: 10MB.' 
+			};
+		}
+
+		return { valido: true };
+	}
+
+	// Vista previa de imagen
+	function mostrarVistaPrevia(archivo) {
+		const previewContainer = document.getElementById('preview-container');
+		const previewImagen = document.getElementById('preview-imagen');
+
+		if (archivo) {
+			const reader = new FileReader();
+			reader.onload = (e) => {
+				previewImagen.src = e.target.result;
+				previewContainer.classList.remove('hidden');
+			};
+			reader.readAsDataURL(archivo);
+		} else {
+			previewContainer.classList.add('hidden');
+		}
+	}
+
+	async function subirImagen(archivo) {
+		if (!archivo) return '';
+
+		const validacion = validarArchivo(archivo);
+		if (!validacion.valido) {
+			throw new Error(validacion.error);
+		}
+
+		try {
+			const formData = new FormData();
+			formData.append('imagen', archivo);
+
+			// Obtener rol del usuario para el header (solo en cliente)
+			const userRole = getLocalStorage('auth_role', 'usuario');
+
+			const response = await fetch(`${BACKEND_BASE_URL}/upload`, {
+				method: 'POST',
+				headers: {
+					'X-User-Role': userRole
+				},
+				body: formData,
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				const errorMessage = errorData.error || 'Error al subir la imagen';
+				
+				// Mensaje más descriptivo si Firebase no está configurado
+				if (errorMessage.includes('firebase-credentials.json') || errorMessage.includes('Firebase Storage no está configurado')) {
+					throw new Error(
+						'Firebase Storage no está configurado.\n\n' +
+						'Para subir imágenes, necesitas:\n' +
+						'1. Ir a Firebase Console (https://console.firebase.google.com/)\n' +
+						'2. Configuración del proyecto > Cuentas de servicio\n' +
+						'3. Generar nueva clave privada\n' +
+						'4. Guardar el archivo como "firebase-credentials.json" en la carpeta backend/\n\n' +
+						'Ver CONFIGURACION_FIREBASE.md para más detalles.'
+					);
+				}
+				
+				throw new Error(errorMessage);
+			}
+
+			const data = await response.json();
+			return data.url || '';
+		} catch (error) {
+			console.error('Error al subir imagen:', error);
+			throw error;
+		}
+	}
+
+	async function crearNoticia(datosNoticia) {
+		try {
+			// Obtener rol del usuario para el header (solo en cliente)
+			const userRole = getLocalStorage('auth_role', 'usuario');
+			
+			// Usar BACKEND_BASE_URL directamente para evitar el endpoint de Astro
+			const response = await fetch(`${BACKEND_BASE_URL}/news`, {
+				method: 'POST',
+				headers: { 
+					'Content-Type': 'application/json',
+					'X-User-Role': userRole
+				},
+				body: JSON.stringify(datosNoticia),
+			});
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || `Error: ${response.status}`);
+			}
+			return await response.json();
+		} catch (error) {
+			console.error('Error al crear noticia:', error);
+			throw error;
+		}
+	}
+
+	async function manejarEnvioFormulario(event) {
+		event.preventDefault();
+		const formulario = event.target;
+		const titulo = document.getElementById('titulo').value.trim();
+		const contenido = document.getElementById('contenido').value.trim();
+		
+		// Obtener el usuario logueado automáticamente (solo en cliente)
+		const usuarioLogueado = getLocalStorage('auth_user');
+		
+		if (!usuarioLogueado) {
+			mostrarModalMensaje('Sesión requerida', 'No estás autenticado. Por favor, inicia sesión.', 'warning');
+			setTimeout(() => {
+				if (typeof window !== 'undefined') {
+					window.location.href = '/login';
+				}
+			}, 2000);
+			return;
+		}
+		
+		const autor = usuarioLogueado;
+		const imagenInput = document.getElementById('imagen');
+		const archivo = imagenInput.files[0];
+
+		if (!titulo || !contenido) {
+			mostrarModalMensaje('Campos requeridos', 'Por favor, completa todos los campos requeridos.', 'warning');
+			return;
+		}
+
+		// Deshabilitar el botón mientras se procesa
+		const submitButton = formulario.querySelector('button[type="submit"]');
+		const textoOriginal = submitButton.textContent;
+		submitButton.disabled = true;
+		submitButton.textContent = 'Publicando...';
+
+		try {
+			// Subir imagen primero si existe
+			let imagenUrl = '';
+			if (archivo) {
+				imagenUrl = await subirImagen(archivo);
+			}
+
+			// Crear la noticia con la URL de la imagen
+			const datosNoticia = {
+				titulo,
+				contenido,
+				autor,
+				imagen: imagenUrl,
+			};
+
+			await crearNoticia(datosNoticia);
+			mostrarModalMensaje('¡Éxito!', 'Noticia creada exitosamente!', 'success');
+			formulario.reset();
+			document.getElementById('preview-container').classList.add('hidden');
+			setTimeout(() => {
+				window.location.href = '/noticias';
+			}, 1500);
+		} catch (error) {
+			mostrarModalMensaje('Error', error.message, 'error');
+			console.error(error);
+		} finally {
+			submitButton.disabled = false;
+			submitButton.textContent = textoOriginal;
+		}
+	}
+
+	document.addEventListener('DOMContentLoaded', () => {
+		// Verificar que estamos en el cliente
+		if (typeof window === 'undefined' || !window.localStorage) {
+			return;
+		}
+
+		// Verificar autenticación y permisos
+		const user = getLocalStorage('auth_user');
+		const role = getLocalStorage('auth_role', 'usuario');
+		
+		if (!user) {
+			window.location.href = '/login';
+			return;
+		}
+		
+		// Verificar permiso de crear (admin, maestro o superadmin)
+		const canCreate = role === 'admin' || role === 'maestro' || role === 'superadmin';
+		if (!canCreate) {
+			mostrarModalMensaje('Sin permisos', 'No tienes permisos para crear noticias.', 'warning');
+			setTimeout(() => {
+				window.location.href = '/noticias';
+			}, 2000);
+			return;
+		}
+
+		// Configurar botón de cerrar modal
+		const btnCerrarMensaje = document.getElementById('btn-cerrar-mensaje');
+		if (btnCerrarMensaje) {
+			btnCerrarMensaje.addEventListener('click', cerrarModalMensaje);
+		}
+
+		// Cerrar modal al hacer click fuera
+		const modalMensaje = document.getElementById('modal-mensaje');
+		if (modalMensaje) {
+			modalMensaje.addEventListener('click', (e) => {
+				if (e.target === modalMensaje) {
+					cerrarModalMensaje();
+				}
+			});
+		}
+
+		// Cerrar modal con tecla Escape
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && modalMensaje && !modalMensaje.classList.contains('hidden')) {
+				cerrarModalMensaje();
+			}
+		});
+
+		const formulario = document.getElementById('formulario-noticia');
+		const imagenInput = document.getElementById('imagen');
+		const autorInput = document.getElementById('autor');
+
+		// Llenar automáticamente el campo autor con el usuario logueado
+		if (autorInput) {
+			const usuarioLogueado = getLocalStorage('auth_user');
+			if (usuarioLogueado) {
+				autorInput.value = usuarioLogueado;
+			} else {
+				// Si no hay usuario logueado, redirigir al login
+				window.location.href = '/login';
+				return;
+			}
+		}
+
+		if (formulario) {
+			formulario.addEventListener('submit', manejarEnvioFormulario);
+		}
+
+		if (imagenInput) {
+			imagenInput.addEventListener('change', (e) => {
+				const archivo = e.target.files[0];
+				if (archivo) {
+					const validacion = validarArchivo(archivo);
+					if (!validacion.valido) {
+						mostrarModalMensaje('Archivo inválido', validacion.error, 'error');
+						e.target.value = '';
+						document.getElementById('preview-container').classList.add('hidden');
+						return;
+					}
+					mostrarVistaPrevia(archivo);
+				} else {
+					document.getElementById('preview-container').classList.add('hidden');
+				}
+			});
+		}
+	});
+</script>
+

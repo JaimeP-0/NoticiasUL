@@ -1,0 +1,246 @@
+---
+// Layout principal con Tailwind CSS
+---
+
+<!doctype html>
+<html lang="es" class="h-full">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Noticias Universitarias</title>
+	</head>
+	<body class="min-h-full bg-gray-50 dark:bg-gray-900 transition-colors">
+		<!-- Header con reloj -->
+		<header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+			<div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+				<a href="/" class="text-2xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+					Noticias Universitarias
+				</a>
+				<div class="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+					<!-- Reloj (siempre visible) -->
+					<div class="flex items-center gap-2">
+						<i class="bi bi-clock"></i>
+						<span id="reloj-actual" class="tabular-nums"></span>
+					</div>
+					<!-- Icono de login (solo visible cuando NO hay sesión) -->
+					<a id="icono-login" href="/login" class="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors" title="Iniciar sesión">
+						<i class="bi bi-box-arrow-in-right text-xl"></i>
+					</a>
+					<!-- Información del usuario (solo visible cuando hay sesión) -->
+					<div id="usuario-info" class="hidden flex items-center gap-3">
+						<div class="flex flex-col items-end">
+							<span id="usuario-nombre" class="text-gray-900 dark:text-white font-medium"></span>
+							<span id="usuario-rol" class="text-xs text-gray-500 dark:text-gray-400"></span>
+						</div>
+						<button id="btn-logout" class="p-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Cerrar sesión">
+							<i class="bi bi-box-arrow-right text-xl"></i>
+						</button>
+					</div>
+				</div>
+			</div>
+		</header>
+
+		<!-- Menú de navegación -->
+		<nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+			<div class="max-w-7xl mx-auto px-4">
+				<ul class="flex justify-center gap-6 py-2">
+					<li>
+						<a href="/noticias" class="nav-link px-3 py-2 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 border-b-2 border-transparent hover:border-blue-600 transition-colors">
+							Noticias
+						</a>
+					</li>
+					<li>
+						<a id="link-agregar" href="/agregar" class="nav-link px-3 py-2 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 border-b-2 border-transparent hover:border-blue-600 transition-colors hidden">
+							Agregar
+						</a>
+					</li>
+					<li>
+						<a id="link-admin" href="/admin" class="nav-link px-3 py-2 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 border-b-2 border-transparent hover:border-purple-600 transition-colors hidden">
+							Administración
+						</a>
+					</li>
+				</ul>
+			</div>
+		</nav>
+
+		<!-- Contenido principal -->
+		<main class="max-w-4xl mx-auto px-4 py-8">
+			<slot />
+		</main>
+
+		<!-- Botón flotante para cambiar tema -->
+		<div class="fixed bottom-4 left-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+			<ul class="flex gap-1 p-1">
+				<li class="theme-toggle" data-bs-theme-value="light" title="Claro">
+					<button class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+						<i class="bi bi-sun-fill text-yellow-500"></i>
+					</button>
+				</li>
+				<li class="theme-toggle" data-bs-theme-value="dark" title="Oscuro">
+					<button class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+						<i class="bi bi-moon-stars-fill text-blue-500"></i>
+					</button>
+				</li>
+				<li class="theme-toggle" data-bs-theme-value="auto" title="Auto">
+					<button class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+						<i class="bi bi-circle-half text-gray-500"></i>
+					</button>
+				</li>
+			</ul>
+		</div>
+
+		<!-- Scripts -->
+		<script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
+		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous" defer></script>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+		
+		<script>
+			// Funciones globales del Layout
+			let bootstrapTheme = localStorage.getItem('theme');
+
+			function detectSystemTheme() {
+				return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+			}
+
+			function filterTheme(theme) {
+				return theme === 'auto' ? detectSystemTheme() : theme;
+			}
+
+			function setTheme(theme) {
+				const html = document.documentElement;
+				html.classList.remove('light', 'dark');
+				html.classList.add(filterTheme(theme));
+				localStorage.setItem('theme', theme);
+			}
+
+			function showActiveTheme(theme) {
+				document.querySelectorAll('.theme-toggle').forEach((el) => {
+					el.classList.remove('bg-blue-100', 'dark:bg-blue-900');
+				});
+				const active = document.querySelector(`[data-bs-theme-value="${theme}"]`);
+				if (active) active.classList.add('bg-blue-100', 'dark:bg-blue-900');
+			}
+
+			// Inicialización
+			document.addEventListener('DOMContentLoaded', function() {
+				// Tema inicial
+				bootstrapTheme = localStorage.getItem('theme') || 'auto';
+				setTheme(bootstrapTheme);
+				showActiveTheme(bootstrapTheme);
+
+				document.querySelectorAll('.theme-toggle').forEach((el) => {
+					el.addEventListener('click', () => {
+						bootstrapTheme = el.getAttribute('data-bs-theme-value');
+						setTheme(bootstrapTheme);
+						showActiveTheme(bootstrapTheme);
+					});
+				});
+
+				// Reloj (siempre visible)
+				const reloj = document.getElementById('reloj-actual');
+				function actualizarReloj() {
+					if (!reloj) return;
+					reloj.textContent = new Date().toLocaleString('es-ES');
+				}
+				actualizarReloj();
+				setInterval(actualizarReloj, 1000);
+
+				// Verificar autenticación y mostrar usuario
+				const usuario = localStorage.getItem('auth_user');
+				const role = localStorage.getItem('auth_role') || 'usuario';
+				const nombre = localStorage.getItem('auth_nombre') || usuario;
+				const usuarioInfo = document.getElementById('usuario-info');
+				const usuarioNombre = document.getElementById('usuario-nombre');
+				const usuarioRol = document.getElementById('usuario-rol');
+				const btnLogout = document.getElementById('btn-logout');
+				const linkAgregar = document.getElementById('link-agregar');
+				const linkAdmin = document.getElementById('link-admin');
+				const iconoLogin = document.getElementById('icono-login');
+				
+				// Función para obtener etiqueta del rol
+				function getRoleLabel(rol) {
+					const labels = {
+						'superadmin': 'Super Administrador',
+						'admin': 'Administrador',
+						'maestro': 'Maestro',
+						'usuario': 'Usuario'
+					};
+					return labels[rol] || rol;
+				}
+				
+				// Función para obtener color del rol
+				function getRoleColor(rol) {
+					const colors = {
+						'superadmin': 'text-purple-600 dark:text-purple-400',
+						'admin': 'text-red-600 dark:text-red-400',
+						'maestro': 'text-blue-600 dark:text-blue-400',
+						'usuario': 'text-gray-600 dark:text-gray-400'
+					};
+					return colors[rol] || colors.usuario;
+				}
+				
+				if (usuario && usuarioInfo && usuarioNombre && usuarioRol && btnLogout) {
+					// Usuario autenticado: ocultar icono de login
+					if (iconoLogin) {
+						iconoLogin.classList.add('hidden');
+					}
+					
+					// Mostrar información del usuario
+					usuarioNombre.textContent = nombre || usuario;
+					usuarioRol.textContent = getRoleLabel(role);
+					usuarioRol.className = `text-xs ${getRoleColor(role)} font-medium`;
+					usuarioInfo.classList.remove('hidden');
+					
+					// Mostrar enlace "Agregar Noticia" solo si tiene permiso (admin, maestro o superadmin)
+					if (linkAgregar) {
+						const canCreate = role === 'admin' || role === 'maestro' || role === 'superadmin';
+						if (canCreate) {
+							linkAgregar.classList.remove('hidden');
+						} else {
+							linkAgregar.classList.add('hidden');
+						}
+					}
+					
+					// Mostrar enlace "Administración" solo si es superadmin
+					if (linkAdmin) {
+						if (role === 'superadmin') {
+							linkAdmin.classList.remove('hidden');
+						} else {
+							linkAdmin.classList.add('hidden');
+						}
+					}
+					
+					btnLogout.addEventListener('click', () => {
+						localStorage.removeItem('auth_user');
+						localStorage.removeItem('auth_token');
+						localStorage.removeItem('auth_role');
+						localStorage.removeItem('auth_nombre');
+						window.location.href = '/';
+					});
+				} else {
+					// Usuario NO autenticado: mostrar icono de login
+					if (iconoLogin) {
+						iconoLogin.classList.remove('hidden');
+					}
+				}
+
+				// Marcar enlace activo según la URL actual
+				const currentPath = window.location.pathname;
+				document.querySelectorAll('.nav-link').forEach((link) => {
+					if (link.getAttribute('href') === currentPath) {
+						link.classList.add('active');
+					}
+				});
+			});
+		</script>
+	</body>
+</html>
+
+<style>
+	.nav-link.active {
+		border-bottom-color: rgb(37 99 235) !important;
+		color: rgb(37 99 235) !important;
+	}
+</style>
